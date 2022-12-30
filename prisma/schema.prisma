@@ -1,0 +1,21 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  // previewFeatures = []
+}
+
+model ChatGPTAccountConfig {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  email            String
+  password         String
+  isGoogleLogin    Boolean  @default(false)
+  isMicrosoftLogin Boolean  @default(false)
+
+  @@map("chatgpt_account_config")
+}
