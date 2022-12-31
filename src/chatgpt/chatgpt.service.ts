@@ -17,7 +17,6 @@ export class ChatgptService {
       await this.startAllDownAccount();
     })();
   }
-
   async createChatGPTAccount(account: {
     email: string;
     password: string;
@@ -110,28 +109,36 @@ export class ChatgptService {
     }
     // Send Message
     this.logger.debug(`Send message to ${email}: ${message}`);
-    const messageResult = await this.chatgptPoolService.sendMessage(message, {
-      ...options,
-      email: email,
-    });
-    if (messageResult) {
-      await this.prismaService.chatGPTConversation.upsert({
-        where: {
-          conversationId: messageResult.conversationId,
-        },
-        create: {
-          conversationId: messageResult.conversationId,
-          messageId: messageResult.messageId,
-          email,
-        },
-        update: {
-          messageId: messageResult.messageId,
-          conversationId: messageResult.conversationId,
-        },
+    try {
+      const messageResult = await this.chatgptPoolService.sendMessage(message, {
+        ...options,
+        email: email,
       });
-      return messageResult;
-    } else {
-      this.logger.error(`Send message to ${email} failed`);
+      if (messageResult) {
+        await this.prismaService.chatGPTConversation.upsert({
+          where: {
+            conversationId: messageResult.conversationId,
+          },
+          create: {
+            conversationId: messageResult.conversationId,
+            messageId: messageResult.messageId,
+            email,
+          },
+          update: {
+            messageId: messageResult.messageId,
+            conversationId: messageResult.conversationId,
+          },
+        });
+        return messageResult;
+      } else {
+        this.logger.error(`Send message to ${email} failed`);
+      }
+    } catch (e) {
+      this.logger.error(`Send message to ${email} failed: ${e}`);
+      this.prismaService.chatGPTAccount.update({
+        where: { email },
+        data: { status: 'Down' },
+      });
     }
   }
   async startChatgptInstance(email: string) {
