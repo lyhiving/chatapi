@@ -6,7 +6,7 @@ import { AppService } from './app.service';
 import config from 'src/configs/config';
 import { loggingMiddleware } from 'src/common/middleware/logging.middleware';
 import { ChatgptModule } from './chatgpt/chatgpt.module';
-import { CronjobModule } from './cronjob/cronjob.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -18,7 +18,7 @@ import { CronjobModule } from './cronjob/cronjob.module';
       },
     }),
     ChatgptModule,
-    CronjobModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [AppService],

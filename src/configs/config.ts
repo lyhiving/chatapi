@@ -18,8 +18,8 @@ const config: Config = {
     minimize: true,
     captchaToken: process.env.CAPTCHA_TOKEN,
     nopechaKey: process.env.NOPECHA_KEY,
-    executablePath: process.env.EXECUTABLE_PATH,
-    proxyServer: process.env.PROXY_SERVER,
+    executablePath: process.env.EXECUTABLE_PATH || undefined,
+    proxyServer: process.env.PROXY_SERVER || undefined,
   },
 };
 

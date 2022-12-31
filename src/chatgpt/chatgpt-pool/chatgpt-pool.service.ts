@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { ChatGPTAPIBrowser, SendMessageOptions } from 'chatgpt';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error
+import type { SendMessageOptions, ChatGPTAPIBrowser } from 'chatgpt';
 import type { ChatgptConfig } from 'src/configs/config.interface';
 import retry from 'async-retry';
 @Injectable()
@@ -20,15 +22,19 @@ export class ChatgptPoolService {
     isGoogleLogin?: boolean;
     isMicrosoftLogin?: boolean;
   }) {
+    if (this.chatgptPool.has(opts.email)) {
+      return;
+    }
     const { ChatGPTAPIBrowser } = await import('chatgpt');
-    const chatgpt = retry(
+    const chatgpt = await retry(
       async (_: any, num: number) => {
         const chatgpt = new ChatGPTAPIBrowser({
           ...opts,
           ...this.chatgptConfig,
         });
         try {
-          return await chatgpt.initSession();
+          await chatgpt.initSession();
+          return chatgpt;
         } catch (e) {
           this.logger.error(
             `ChatGPT ${opts.email} initSession error: ${e.message}, retry ${num} times`
@@ -41,6 +47,7 @@ export class ChatgptPoolService {
         retries: 3,
       }
     );
+    this.chatgptPool.set(opts.email, chatgpt);
     return chatgpt;
   }
   get accounts() {
@@ -50,7 +57,7 @@ export class ChatgptPoolService {
     return this.chatgptPool.size === 0;
   }
   getChatGPTInstanceByEmail(email?: string) {
-    if (!!email) {
+    if (!email) {
       return;
     }
     return this.chatgptPool.get(email);

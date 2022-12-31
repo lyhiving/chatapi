@@ -1,14 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SendMessageOptions } from 'chatgpt';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error
+import type { SendMessageOptions } from 'chatgpt';
 import { PrismaService } from 'nestjs-prisma';
 import { ChatgptPoolService } from './chatgpt-pool/chatgpt-pool.service';
+import { Cron } from '@nestjs/schedule';
 @Injectable()
 export class ChatgptService {
   logger = new Logger('ChatgptService');
   constructor(
     private prismaService: PrismaService,
     private chatgptPoolService: ChatgptPoolService
-  ) {}
+  ) {
+    (async () => {
+      await this.stopAllChatGPTInstances();
+      await this.startAllDownAccount();
+    })();
+  }
+
   async createChatGPTAccount(account: {
     email: string;
     password: string;
@@ -83,5 +92,70 @@ export class ChatgptService {
       ...options,
       email: email,
     });
+  }
+  async startChatgptInstance(email: string) {
+    const account = await this.prismaService.chatGPTAccount.findUnique({
+      where: { email },
+    });
+    this.logger.debug(`Start account ${account.email}`);
+    await this.prismaService.chatGPTAccount.update({
+      where: { email: account.email },
+      data: { status: 'Starting' },
+    });
+    try {
+      await this.chatgptPoolService.initChatGPTInstance(account);
+      await this.prismaService.chatGPTAccount.update({
+        where: { email: account.email },
+        data: { status: 'Running' },
+      });
+    } catch (err) {
+      this.logger.error(`Error starting account ${account.email}: ${err}`);
+      await this.prismaService.chatGPTAccount.update({
+        where: { email: account.email },
+        data: { status: 'Error' },
+      });
+    }
+  }
+  async stopAllChatGPTInstances() {
+    this.logger.debug('Stop all chatgpt instances');
+    const accounts = await this.prismaService.chatGPTAccount.findMany({
+      where: {
+        OR: [
+          { status: 'Running' },
+          {
+            status: 'Starting',
+          },
+          {
+            status: 'Error',
+          },
+        ],
+      },
+      select: {
+        email: true,
+      },
+    });
+    console.log(`Found ${accounts.length} running accounts`);
+    for (const account of accounts) {
+      this.chatgptPoolService.deleteChatGPTInstanceByEmail(account.email);
+      await this.prismaService.chatGPTAccount.update({
+        where: { email: account.email },
+        data: { status: 'Down' },
+      });
+    }
+    this.logger.debug(`Found ${accounts.length} running accounts`);
+  }
+  @Cron('1 * * * * *')
+  async startAllDownAccount() {
+    this.logger.debug('Start all down account');
+    const accounts = await this.prismaService.chatGPTAccount.findMany({
+      where: { status: 'Down' },
+      select: {
+        email: true,
+      },
+    });
+    this.logger.debug(`Found ${accounts.length} down accounts`);
+    for (const account of accounts) {
+      this.startChatgptInstance(account.email);
+    }
   }
 }

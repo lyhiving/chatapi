@@ -32,7 +32,7 @@ export class ChatgptController {
     return await this.chatgptService.updateChatGPTAccount(id, updateCatDto);
   }
 
-  @Get('/account/:email/send')
+  @Post('/account/:email/send')
   async sendChatgptMessage(
     @Param('email') email: string,
     @Body() messageDto: any
