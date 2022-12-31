@@ -25,4 +25,4 @@ services:
 
 volumes:
   postgres:
-    name: nest-db
+    name: chatgpt-db
