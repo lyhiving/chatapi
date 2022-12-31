@@ -26,12 +26,12 @@ export class ChatgptPoolService {
       return;
     }
     const { ChatGPTAPIBrowser } = await import('chatgpt');
-    const chatgpt = await retry(
+    const chatgpt = new ChatGPTAPIBrowser({
+      ...opts,
+      ...this.chatgptConfig,
+    });
+    await retry(
       async (_: any, num: number) => {
-        const chatgpt = new ChatGPTAPIBrowser({
-          ...opts,
-          ...this.chatgptConfig,
-        });
         try {
           await chatgpt.initSession();
           return chatgpt;
@@ -39,6 +39,7 @@ export class ChatgptPoolService {
           this.logger.error(
             `ChatGPT ${opts.email} initSession error: ${e.message}, retry ${num} times`
           );
+          chatgpt.closeSession();
           this.logger.debug(e.stack);
           throw e;
         }

@@ -29,3 +29,15 @@ model ChatGPTAccount {
   @@unique([email])
   @@map("chatgpt_account")
 }
+
+model ChatGPTConversation {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  conversationId String
+  messageId      String
+  email          String
+
+  @@unique([conversationId])
+  @@map("chatgpt_conversation")
+}

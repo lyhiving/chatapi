@@ -31,17 +31,9 @@ export class ChatgptController {
   ) {
     return await this.chatgptService.updateChatGPTAccount(id, updateCatDto);
   }
-
-  @Post('/account/:email/send')
-  async sendChatgptMessage(
-    @Param('email') email: string,
-    @Body() messageDto: any
-  ) {
+  @Post('/sendMessage')
+  async sendChatGPTMessage(@Body() messageDto: any) {
     const { message, options } = await messageDto;
-    return await this.chatgptService.sendChatGPTMessage(
-      email,
-      message,
-      options
-    );
+    return await this.chatgptService.sendChatGPTMessage(message, options);
   }
 }

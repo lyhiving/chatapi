@@ -82,21 +82,67 @@ export class ChatgptService {
       },
     });
   }
-  async sendChatGPTMessage(
-    email: string,
-    message: string,
-    options?: SendMessageOptions
-  ) {
+  async getCurrentActiveChatGPT() {
+    return this.prismaService.chatGPTAccount.findMany({
+      where: { status: 'Running' },
+      select: {
+        email: true,
+      },
+    });
+  }
+  async sendChatGPTMessage(message: string, options?: SendMessageOptions) {
+    let email: string;
+    const { conversationId, parentMessageId } = options || {};
+    if (!conversationId || !parentMessageId) {
+      const account = await this.getCurrentActiveChatGPT();
+      email = account[Math.floor(Math.random() * account.length)].email;
+    } else {
+      const account = await this.prismaService.chatGPTConversation.findUnique({
+        where: { id: conversationId },
+        select: {
+          email: true,
+        },
+      });
+      if (!account) {
+        throw new Error('Conversation not found');
+      }
+      email = account.email;
+    }
+    // Send Message
     this.logger.debug(`Send message to ${email}: ${message}`);
-    return this.chatgptPoolService.sendMessage(message, {
+    const messageResult = await this.chatgptPoolService.sendMessage(message, {
       ...options,
       email: email,
     });
+    if (messageResult) {
+      await this.prismaService.chatGPTConversation.upsert({
+        where: {
+          conversationId: messageResult.conversationId,
+        },
+        create: {
+          conversationId: messageResult.conversationId,
+          messageId: messageResult.messageId,
+          email,
+        },
+        update: {
+          messageId: messageResult.messageId,
+          conversationId: messageResult.conversationId,
+        },
+      });
+      return messageResult;
+    } else {
+      this.logger.error(`Send message to ${email} failed`);
+    }
   }
   async startChatgptInstance(email: string) {
-    const account = await this.prismaService.chatGPTAccount.findUnique({
-      where: { email },
+    // As Lock
+    const account = await this.prismaService.chatGPTAccount.findFirst({
+      where: { AND: [{ email }, { status: 'Down' }] },
     });
+    if (!account) {
+      this.logger.error(`Account ${email} is not down`);
+      return;
+    }
     this.logger.debug(`Start account ${account.email}`);
     await this.prismaService.chatGPTAccount.update({
       where: { email: account.email },
@@ -152,10 +198,11 @@ export class ChatgptService {
       select: {
         email: true,
       },
+      take: 1,
     });
     this.logger.debug(`Found ${accounts.length} down accounts`);
     for (const account of accounts) {
-      this.startChatgptInstance(account.email);
+      await this.startChatgptInstance(account.email);
     }
   }
 }
