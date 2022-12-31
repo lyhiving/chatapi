@@ -3,10 +3,10 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from 'nestjs-prisma';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AppResolver } from './app.resolver';
 import config from 'src/configs/config';
 import { loggingMiddleware } from 'src/common/middleware/logging.middleware';
 import { ChatgptModule } from './chatgpt/chatgpt.module';
+import { CronjobModule } from './cronjob/cronjob.module';
 
 @Module({
   imports: [
@@ -18,8 +18,9 @@ import { ChatgptModule } from './chatgpt/chatgpt.module';
       },
     }),
     ChatgptModule,
+    CronjobModule,
   ],
   controllers: [AppController],
-  providers: [AppService, AppResolver],
+  providers: [AppService],
 })
 export class AppModule {}
