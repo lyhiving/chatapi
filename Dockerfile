@@ -1,4 +1,4 @@
-FROM node:16 AS builder
+FROM node:19 AS builder
 
 # Create app directory
 WORKDIR /app
@@ -14,7 +14,7 @@ COPY . .
 
 RUN npm run build
 
-FROM node:16
+FROM node:19 
 # We don't need the standalone Chromium
 RUN apt-get install -y wget \ 
   && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \ 
